@@ -149,14 +149,18 @@ class WeKastController extends Controller
             if ($check === self::LOGIN_FALSE) {
                 throw new WeKastAPIException(4);
             }
-            $email = $request->input('email');
-            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                throw new WeKastAPIException(3);
-            }
+//09.03.2017 Ruslan
+//            $email = $request->input('email');
+//            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+//                throw new WeKastAPIException(3);
+//            }
             $password = str_random(8);
             $user = new User();
             $user->login = $login;
-            $user->email = $email;
+
+//09.03.2017 Ruslan
+//            $user->email = $email;
+
             $user->password = Hash::make($password);
             // Для дебаженных логинов, письма подтверждать
             if ($check === self::LOGIN_TRUE) {
@@ -168,15 +172,17 @@ class WeKastController extends Controller
             $host = env('APP_URL', false);
             $link = $host . '/confirm/' . $user->confirmed;;
             $data = ['link' => $link, 'login' => $user->login, 'password' => $password];
+
             // Отправлять письмо только для недебажных логинов
             if ($check === self::LOGIN_TRUE) {
-                Mail::send('emails.confirm', $data, function ($m) use ($user) {
-                    $m->from(env('MAIL_FROM'), 'WeKat Email confirm');
-                    $m->to($user->email, $user->login)->subject('Confirm email!');
-                });
+//09.03.2017 Ruslan
+//                Mail::send('emails.confirm', $data, function ($m) use ($user) {
+//                    $m->from(env('MAIL_FROM'), 'WeKast Email confirm');
+//                    $m->to($user->email, $user->login)->subject('Confirm email!');
+//                });
+
                 $phone = '+' . $user->login;
                 $message = 'WeKast: Phone confirm code is ' . $user->code;
-
                 try {
                     Twilio::message($phone, $message);
                 } catch (Services_Twilio_RestException $e) {
@@ -186,7 +192,8 @@ class WeKastController extends Controller
 
             return Response::normal([
                 'login' => $login,
-                'email' => $email,
+//09.03.2017 Ruslan
+//                'email' => $email,
                 'password' => $password,
             ]);
         } catch (QueryException $e) {
@@ -473,7 +480,11 @@ class WeKastController extends Controller
             $user = User::where('confirmed', $hash)->take(1)->firstOrFail();
             $user->confirmed = null;
             $user->save();
-            return view('confirm', ['email' => $user->email]);
+
+//09.03.2017 Ruslan
+//            return view('confirm', ['email' => $user->email]);
+            return view('confirm', ['email' => true]);
+
         } catch (ModelNotFoundException $e) {
             return view('confirm', ['email' => false]);
         }
@@ -484,16 +495,25 @@ class WeKastController extends Controller
         self::logRequest($request);
         $answer = "OK";
         try {
-            $user = User::where('email', $request->email)->take(1)->firstOrFail();
+
+//09.03.2017 Ruslan
+//            $user = User::where('email', $request->email)->take(1)->firstOrFail();
+            $login = $request->input('login');
+            $user = User::where('login', $login)->take(1)->firstOrFail();
+
+
             if ($user->confirmed === null) {
                 $password = str_random(8);
                 $user->password = Hash::make($password);
                 $user->save();
                 $data = ['login' => $user->login, 'password' => $password];
-                Mail::send('emails.remind', $data, function ($m) use ($user) {
-                    $m->from(env('MAIL_FROM'), 'WeKat Password Reminder');
-                    $m->to($user->email, $user->login)->subject('Remind password!');
-                });
+
+//09.03.2017 Ruslan
+//                Mail::send('emails.remind', $data, function ($m) use ($user) {
+//                    $m->from(env('MAIL_FROM'), 'WeKast Password Reminder');
+//                    $m->to($user->email, $user->login)->subject('Remind password!');
+//                });
+
             } else {
                 $answer = "Not confirmed";
             }
